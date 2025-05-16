@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 
 /**
  * Simulation update interval in milliseconds
@@ -16,20 +16,25 @@ function App() {
   const [numRows, setNumRows] = useState(30)
   const [numCols, setNumCols] = useState(50)
   const [grid, setGrid] = useState(() => generateEmptyGrid(30, 50))
-  
+
   // Simulation control state
   const [running, setRunning] = useState(false)
   const runningRef = useRef(running)
   runningRef.current = running
-  
+
   // UI state
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(true)
-  
+
   // Conway's Game of Life rule parameters
   const [surviveMin, setSurviveMin] = useState(2)
   const [surviveMax, setSurviveMax] = useState(3)
   const [birthNum, setBirthNum] = useState(3)
+
+  // Advanced simulation settings
+  const [simulationSpeed, setSimulationSpeed] = useState(interval)
+  const [cellSize, setCellSize] = useState(12)
+  const [cellColor, setCellColor] = useState('#66e1ff') // Cyan default
 
   /**
    * Creates an empty grid of specified dimensions filled with zeros
@@ -69,8 +74,10 @@ function App() {
         row.map((cell, j) => {
           let neighbors = 0
           operations.forEach(([x, y]) => {
-            const newI = i + x
-            const newJ = j + y
+            let newI = i + x
+            let newJ = j + y
+
+            // Standard boundary checking
             if (
               newI >= 0 &&
               newI < numRows &&
@@ -79,6 +86,7 @@ function App() {
             ) {
               neighbors += g[newI][newJ]
             }
+
           })
           if (cell === 1 && (neighbors < surviveMin || neighbors > surviveMax)) return 0
           if (cell === 0 && neighbors === birthNum) return 1
@@ -86,8 +94,8 @@ function App() {
         })
       )
     })
-    setTimeout(runSimulation, interval)
-  }, [numRows, numCols, surviveMin, surviveMax, birthNum])
+    setTimeout(runSimulation, simulationSpeed)
+  }, [numRows, numCols, surviveMin, surviveMax, birthNum, simulationSpeed])
 
   const handleCellClick = (i, j) => {
     const newGrid = grid.map((row, rowIdx) =>
@@ -108,6 +116,42 @@ function App() {
       Array.from({ length: numCols }, () => (Math.random() > 0.7 ? 1 : 0))
     )
     setGrid(rows)
+  }
+
+  /**
+   * Creates a glider pattern at the center of the grid
+   * A classic pattern that moves diagonally across the grid
+   */
+  const createGlider = () => {
+    const newGrid = generateEmptyGrid(numRows, numCols)
+    const centerRow = Math.floor(numRows / 2)
+    const centerCol = Math.floor(numCols / 2)
+
+    // Glider pattern
+    newGrid[centerRow][centerCol + 1] = 1
+    newGrid[centerRow + 1][centerCol + 2] = 1
+    newGrid[centerRow + 2][centerCol] = 1
+    newGrid[centerRow + 2][centerCol + 1] = 1
+    newGrid[centerRow + 2][centerCol + 2] = 1
+
+    setGrid(newGrid)
+  }
+
+  /**
+   * Creates an oscillator (blinker) pattern
+   * A simple pattern that toggles between horizontal and vertical states
+   */
+  const createOscillator = () => {
+    const newGrid = generateEmptyGrid(numRows, numCols)
+    const centerRow = Math.floor(numRows / 2)
+    const centerCol = Math.floor(numCols / 2)
+
+    // Blinker (period 2 oscillator)
+    newGrid[centerRow - 1][centerCol] = 1
+    newGrid[centerRow][centerCol] = 1
+    newGrid[centerRow + 1][centerCol] = 1
+
+    setGrid(newGrid)
   }
 
   const handleResize = (rows, cols) => {
@@ -132,83 +176,156 @@ function App() {
         </button>
         <h2 className="mt-0 text-xl font-bold">Simulation Settings</h2>
         <div className="mb-4 flex justify-between items-center w-full">
-          <label 
+          <label
             htmlFor="surviveMin"
-            title="Minimum number of neighbors for a live cell to survive (default: 2)" 
+            title="Minimum number of neighbors for a live cell to survive (default: 2)"
             className="font-medium"
           >
             Live Cell Underpopulation:
           </label>
           <div className="flex justify-end w-20">
-              <input
-                id="surviveMin"
-                type="number"
-                min={0}
-                max={8}
-                value={surviveMin}
-                onChange={e => setSurviveMin(Number(e.target.value))}
-                className={`w-14 px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                title="Minimum number of neighbors for a live cell to survive. If a live cell has fewer, it dies."
-                autoComplete="new-password"
-                data-form-type="other"
-                data-lpignore="true"
-                form="non-login-form"
-                aria-autocomplete="none"
-              />
+            <input
+              id="surviveMin"
+              type="number"
+              min={0}
+              max={8}
+              value={surviveMin}
+              onChange={e => setSurviveMin(Number(e.target.value))}
+              className={`w-14 px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              title="Minimum number of neighbors for a live cell to survive. If a live cell has fewer, it dies."
+              autoComplete="new-password"
+              data-form-type="other"
+              data-lpignore="true"
+              form="non-login-form"
+              aria-autocomplete="none"
+            />
           </div>
         </div>
         <div className="mb-4 flex justify-between items-center w-full">
-          <label 
+          <label
             htmlFor="surviveMax"
-            title="Maximum number of neighbors for a live cell to survive (default: 3)" 
+            title="Maximum number of neighbors for a live cell to survive (default: 3)"
             className="font-medium"
           >
             Live Cell Overcrowding:
           </label>
           <div className="flex justify-end w-20">
-              <input
-                id="surviveMax"
-                type="number"
-                min={0}
-                max={8}
-                value={surviveMax}
-                onChange={e => setSurviveMax(Number(e.target.value))}
-                className={`w-14 px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                title="Maximum number of neighbors for a live cell to survive. If a live cell has more, it dies."
-                autoComplete="new-password"
-                data-form-type="other"
-                data-lpignore="true"
-                form="non-login-form"
-                aria-autocomplete="none"
-              />
+            <input
+              id="surviveMax"
+              type="number"
+              min={0}
+              max={8}
+              value={surviveMax}
+              onChange={e => setSurviveMax(Number(e.target.value))}
+              className={`w-14 px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              title="Maximum number of neighbors for a live cell to survive. If a live cell has more, it dies."
+              autoComplete="new-password"
+              data-form-type="other"
+              data-lpignore="true"
+              form="non-login-form"
+              aria-autocomplete="none"
+            />
           </div>
         </div>
         <div className="mb-4 flex justify-between items-center w-full">
-          <label 
+          <label
             htmlFor="birthRule"
-            title="Exact number of neighbors for a dead cell to become alive (default: 3)" 
+            title="Exact number of neighbors for a dead cell to become alive (default: 3)"
             className="font-medium"
           >
             Cell Reproduction Count:
           </label>
           <div className="flex justify-end w-20">
-              <input
-                id="birthRule"
-                type="number"
-                min={0}
-                max={8}
-                value={birthNum}
-                onChange={e => setBirthNum(Number(e.target.value))}
-                className={`w-14 px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                title="Exact number of neighbors for a dead cell to become alive."
-                autoComplete="new-password"
-                data-form-type="other"
-                data-lpignore="true"
-                form="non-login-form"
-                aria-autocomplete="none"
-              />
+            <input
+              id="birthRule"
+              type="number"
+              min={0}
+              max={8}
+              value={birthNum}
+              onChange={e => setBirthNum(Number(e.target.value))}
+              className={`w-14 px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              title="Exact number of neighbors for a dead cell to become alive."
+              autoComplete="new-password"
+              data-form-type="other"
+              data-lpignore="true"
+              form="non-login-form"
+              aria-autocomplete="none"
+            />
           </div>
         </div>
+
+        <h3 className="mt-8 mb-3 text-lg font-medium">Advanced Settings</h3>
+
+        <div className="mb-4 flex justify-between items-center w-full">
+          <label
+            htmlFor="simulationSpeed"
+            title="Adjust simulation speed (lower is faster)"
+            className="font-medium"
+          >
+            Simulation Speed:
+          </label>
+          <div className="flex justify-end w-24">
+            <input
+              id="simulationSpeed"
+              type="range"
+              min={30}
+              max={500}
+              value={simulationSpeed}
+              onChange={e => setSimulationSpeed(Number(e.target.value))}
+              className={`w-full ${darkMode ? 'accent-cyan-400' : 'accent-cyan-700'}`}
+              title="Adjust simulation speed in milliseconds between steps"
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4 flex justify-between items-center w-full">
+          <label
+            htmlFor="cellSize"
+            title="Adjust the size of each cell"
+            className="font-medium"
+          >
+            Cell Size:
+          </label>
+          <div className="flex justify-end w-20">
+            <input
+              id="cellSize"
+              type="number"
+              min={4}
+              max={30}
+              value={cellSize}
+              onChange={e => setCellSize(Number(e.target.value))}
+              className={`w-14 px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              title="Size of each cell in pixels"
+              autoComplete="new-password"
+              data-form-type="other"
+              data-lpignore="true"
+              form="non-login-form"
+              aria-autocomplete="none"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4 flex justify-between items-center w-full">
+          <label
+            htmlFor="cellColor"
+            title="Choose color for living cells"
+            className="font-medium"
+          >
+            Cell Color:
+          </label>
+          <div className="flex justify-end w-20">
+            <input
+              id="cellColor"
+              type="color"
+              value={cellColor}
+              onChange={e => setCellColor(e.target.value)}
+              className={`w-14 h-7 cursor-pointer rounded border ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}
+              title="Choose color for living cells"
+            />
+          </div>
+        </div>
+
         <p className={`text-xs mt-6 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           Adjust the rules to experiment with different Life-like cellular automata!
         </p>
@@ -233,9 +350,8 @@ function App() {
             return newMode
           })
         }}
-        className={`fixed right-4 top-4 z-10 rounded-full p-2 shadow ${
-          darkMode ? 'bg-gray-800 text-yellow-300 border-gray-700' : 'bg-white text-gray-800 border-gray-300'
-        }`}
+        className={`fixed right-4 top-4 z-10 rounded-full p-2 shadow ${darkMode ? 'bg-gray-800 text-yellow-300 border-gray-700' : 'bg-white text-gray-800 border-gray-300'
+          }`}
         aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         {darkMode ? (
@@ -302,43 +418,59 @@ function App() {
           >
             {running ? 'Pause' : 'Start'}
           </button>
-          <button 
-            onClick={handleClear} 
+          <button
+            onClick={handleClear}
             className={`ml-2 px-4 py-1 rounded transition ${darkMode ? 'bg-gray-700 hover:bg-gray-800 text-white border-gray-800' : 'bg-gray-200 hover:bg-gray-300 text-gray-800 border-gray-300'}`}
           >
             Clear
           </button>
-          <button 
-            onClick={handleRandom} 
+          <button
+            onClick={handleRandom}
             className={`ml-2 px-4 py-1 rounded transition ${darkMode ? 'bg-green-600 hover:bg-green-700 text-white border-green-700' : 'bg-green-500 hover:bg-green-600 text-white border-green-600'}`}
           >
             Random
           </button>
+          <button
+            onClick={createGlider}
+            className={`ml-2 px-4 py-1 rounded transition ${darkMode ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-700' : 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-600'}`}
+          >
+            Glider
+          </button>
+          <button
+            onClick={createOscillator}
+            className={`ml-2 px-4 py-1 rounded transition ${darkMode ? 'bg-pink-600 hover:bg-pink-700 text-white border-pink-700' : 'bg-pink-500 hover:bg-pink-600 text-white border-pink-600'}`}
+          >
+            Blinker
+          </button>
         </div>
-        <div 
+        <div
           className="grid mx-auto overflow-hidden"
-          style={{ gridTemplateColumns: `repeat(${numCols}, 12px)` }}
+          style={{ gridTemplateColumns: `repeat(${numCols}, ${cellSize}px)` }}
         >
           {grid.map((row, i) =>
             row.map((col, j) => (
               <div
                 key={`${i}-${j}`}
                 onClick={() => handleCellClick(i, j)}
-                className={`w-[12px] h-[12px] border border-solid cursor-pointer transition-colors duration-100 ${
-                  grid[i][j] 
-                    ? darkMode 
-                      ? 'bg-cyan-400 border-cyan-800' 
-                      : 'bg-cyan-700 border-cyan-900' 
-                    : darkMode 
-                      ? 'bg-gray-800 border-gray-900' 
+                className={`border border-solid cursor-pointer transition-colors duration-100 ${grid[i][j]
+                    ? darkMode
+                      ? 'border-gray-700'
+                      : 'border-gray-300'
+                    : darkMode
+                      ? 'bg-gray-800 border-gray-900'
                       : 'bg-gray-200 border-gray-300'
-                }`}
+                  }`}
+                style={{
+                  width: `${cellSize}px`,
+                  height: `${cellSize}px`,
+                  backgroundColor: grid[i][j] ? cellColor : ''
+                }}
               />
             ))
           )}
         </div>
         <p className={`mt-6 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Click cells to toggle. Start, pause, clear, or randomize the board.
+          Click cells to toggle. Use the pattern buttons or adjust rules in the settings panel.
         </p>
       </div>
     </div>
